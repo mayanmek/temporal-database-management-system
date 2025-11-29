@@ -43,6 +43,24 @@ def _unset_time_arg_parser(args):
         print()
         return None
 
+def _undo_arg_parser(args):
+    args = shlex.split(args)
+    parser = argparse.ArgumentParser(prog="undo", description="undo the last change")
+    try:
+        return parser.parse_args(args)
+    except:
+        print()
+        return None
+
+def _redo_arg_parser(args):
+    args = shlex.split(args)
+    parser = argparse.ArgumentParser(prog="redo", description="redo the last undo")
+    try:
+        return parser.parse_args(args)
+    except:
+        print()
+        return None
+
 
 def _get_history_arg_parser(args):
     args = shlex.split(args)
@@ -143,6 +161,51 @@ def _get_result_arg_parser(args):
         print()
         return None
 
+
+def _delete_arg_parser(args):
+    args = shlex.split(args)
+    parser = argparse.ArgumentParser(prog="delete",
+                                     description="delete row from the df")
+
+    parser.add_argument(
+        "first_name",
+        type=str,
+        help="patient's first name"
+    )
+
+    parser.add_argument(
+        "last_name",
+        type=str,
+        help="patient's last name"
+    )
+
+    parser.add_argument(
+        "loinc_code",
+        type=str,
+        help="test's loinc code"
+    )
+
+    parser.add_argument(
+        "date",
+        type=lambda s: datetime.datetime.strptime(s, "%Y-%m-%d").date(),
+        help="Date in YYYY-MM-DD format"
+    )
+
+    parser.add_argument(
+        "time",
+        type=lambda s: datetime.datetime.strptime(s, "%H:%M").time(),
+        nargs="?",
+        default=None,
+        help="Time in HH:MM format"
+    )
+
+    try:
+        return parser.parse_args(args)
+    except:
+        print()
+        return None
+
+
 def _update_arg_parser(args):
     args = shlex.split(args)
     parser = argparse.ArgumentParser(prog="update",
@@ -181,8 +244,8 @@ def _update_arg_parser(args):
     )
     parser.add_argument(
         "value",
-        type=lambda a: int(a) if a.lower() != "none" else None,
-        help="Date in YYYY-MM-DD format"
+        type=lambda a: a if a.lower() != "none" else None,
+        help="new value for the test or none for delete"
     )
 
     try:
@@ -192,15 +255,27 @@ def _update_arg_parser(args):
         return None
 
 
-
 class MyShell(cmd.Cmd):
-    intro = "Welcome! Type help or ? to list commands.\n"
-    prompt = "> "
+    intro = "Welcome! Type help or ? to list commands."
+    prompt = "\n> "
 
     def __init__(self):
         super().__init__()
         self.db = MyDB(Path("dbs/project_db_2025.xlsx"))
         self.time: Optional[datetime.datetime] = None
+
+    def do_undo(self, args):
+        args = _undo_arg_parser(args)
+        if args is None:
+            return
+        self.db.undo()
+
+    def do_redo(self, args):
+        args = _redo_arg_parser(args)
+        if args is None:
+            return
+        self.db.redo()
+
 
     def _get_time(self):
         if self.time is None:
@@ -319,6 +394,40 @@ class MyShell(cmd.Cmd):
             new_row = self.db.add_row(args.first_name, args.last_name, args.loinc_code, row['Valid start time'], self._get_time(), args.value, row["Unit"])
             print("new row:")
             print(new_row)
+
+    def do_delete(self, arg):
+        args = _delete_arg_parser(arg)
+        if args is None:
+            return
+
+        loinc_full_name = self.db.get_name_by_loinc(args.loinc_code)
+        if loinc_full_name is None:
+            print(f"loinc name cannot be found for code \"{args.loinc_code}\"")
+            return
+
+        start_range = None
+        end_range = None
+
+        if args.time is not None:
+            start_range = end_range = datetime.datetime.combine(args.date, args.time)
+        else:
+            start_range = datetime.datetime.combine(args.date, datetime.time.min)
+            end_range = datetime.datetime.combine(args.date, datetime.time.max)
+
+        history = self.db.get_history(args.first_name,
+                                      args.last_name,
+                                      args.loinc_code,
+                                      range_=(start_range, end_range),
+                                      for_time=self._get_time())
+        if len(history) == 0:
+            print(
+                f"cannot find any test of \"{loinc_full_name}\" ({args.loinc_code}) for {args.first_name} {args.last_name} at {self._get_time()}")
+        else:
+            row = history.iloc[-1]
+            print(
+                f"previus row for test \"{loinc_full_name}\" ({args.loinc_code}) for {args.first_name} {args.last_name} at {self._get_time()}:")
+            print(row)
+            self.db.add_row(args.first_name, args.last_name, args.loinc_code, row['Valid start time'], self._get_time(), None, row["Unit"])
 
     def do_exit(self, arg) -> bool:
         """

@@ -35,9 +35,33 @@ class MyDB:
 
         self.loinc_df = pd.read_csv(loinc_code_db_path,  usecols=['LOINC_NUM', 'LONG_COMMON_NAME'])
 
+        self.lastAdded = False
+        self.lastUndo = None
+
+    def redo(self):
+        if self.lastUndo is None:
+            return False
+
+        # Add the row back safely
+        self.df = pd.concat([self.df, pd.DataFrame([self.lastUndo])], ignore_index=True)
+        self.lastUndo = None
+        self.lastAdded = True
+        return True
+
+    def undo(self):
+        if not self.lastAdded:
+            return False
+
+        # Store last row for redo
+        self.lastUndo = self.df.iloc[-1].copy()
+        self.df = self.df.iloc[:-1].copy()
+        self.lastAdded = False
+        return True
+
     def add_row(self, first_name: str, last_name: str, loinc_code: str, valid_start_time: datetime.datetime, transaction_time: datetime.datetime, value: Optional[int], unit: str):
         self.df.loc[len(self.df)] = (first_name, last_name, loinc_code, value, unit, valid_start_time, transaction_time)
-        return self.df.loc[len(self.df) - 1]
+        self.lastAdded = True
+        return self.df.iloc[-1]
 
     def get_history(self, first_name: str, last_name: str, loinc_code: str, range_: tuple[Optional[datetime.datetime], Optional[datetime.datetime]] = (None, None), for_time: Optional[datetime.datetime] = None):
         """
