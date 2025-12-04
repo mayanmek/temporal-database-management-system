@@ -33,7 +33,6 @@ def _set_time_arg_parser(args):
         print()
         return None
 
-
 def _unset_time_arg_parser(args):
     args = shlex.split(args)
     parser = argparse.ArgumentParser(prog="unset_time", description="Sent you back to real time")
@@ -61,7 +60,6 @@ def _redo_arg_parser(args):
         print()
         return None
 
-
 def _get_history_arg_parser(args):
     args = shlex.split(args)
     parser = argparse.ArgumentParser(prog="get_history",
@@ -84,6 +82,19 @@ def _get_history_arg_parser(args):
         type=str,
         help="test's loinc code"
     )
+    parser.add_argument(
+        "--valid-date", '-vd',
+        type=lambda s: datetime.datetime.strptime(s, "%Y-%m-%d").date(),
+        help="Date in YYYY-MM-DD format for the valid date."
+    )
+
+    parser.add_argument(
+        "--valid-time", '-vt',
+        type=lambda s: datetime.datetime.strptime(s, "%H:%M").time(),
+        default=None,
+        help="Time in HH:MM format for the valid start time, if not provided will see all the day."
+    )
+
     parser.add_argument(
         "--start-date", '-sd',
         default=None,
@@ -116,7 +127,6 @@ def _get_history_arg_parser(args):
     except:
         print()
         return None
-
 
 def _get_result_arg_parser(args):
     args = shlex.split(args)
@@ -317,11 +327,18 @@ class MyShell(cmd.Cmd):
             end_range = datetime.datetime.combine(args.end_date,
                                                   args.end_time if args.end_time is not None else datetime.time.max)
 
+        if args.valid_time is not None:
+            valid_start = valid_end = datetime.datetime.combine(args.valid_date, args.valid_time)
+        else:
+            valid_start = datetime.datetime.combine(args.valid_date, datetime.time.max)
+            valid_end = datetime.datetime.combine(args.valid_date, datetime.time.max)
+
         history = self.db.get_history(args.first_name,
                                       args.last_name,
                                       args.loinc_code,
-                                      range_=(start_range, end_range),
-                                      for_time=self._get_time())
+                                      range_valid=(valid_start, valid_end),
+                                      range_trans=(start_range, end_range)
+                                      )
 
         start_range_txt = "(-∞" if start_range is None else "[" + str(start_range)
         end_range_txt = "∞)" if end_range is None else str(start_range) + "]"
@@ -351,8 +368,8 @@ class MyShell(cmd.Cmd):
         history = self.db.get_history(args.first_name,
                                       args.last_name,
                                       args.loinc_code,
-                                      range_=(start_range, end_range),
-                                      for_time=self._get_time())
+                                      range_valid=(start_range, end_range),
+                                      range_trans=(None, self._get_time()))
         if len(history) == 0:
             print(f"cannot find any test of \"{loinc_full_name}\" ({args.loinc_code}) for {args.first_name} {args.last_name} at {self._get_time()}")
         else:
@@ -381,8 +398,8 @@ class MyShell(cmd.Cmd):
         history = self.db.get_history(args.first_name,
                                       args.last_name,
                                       args.loinc_code,
-                                      range_=(start_range, end_range),
-                                      for_time=self._get_time())
+                                      range_valid=(start_range, end_range),
+                                      range_trans=(None, self._get_time()))
         if len(history) == 0:
             print(
                 f"cannot find any test of \"{loinc_full_name}\" ({args.loinc_code}) for {args.first_name} {args.last_name} at {self._get_time()}")
@@ -417,8 +434,8 @@ class MyShell(cmd.Cmd):
         history = self.db.get_history(args.first_name,
                                       args.last_name,
                                       args.loinc_code,
-                                      range_=(start_range, end_range),
-                                      for_time=self._get_time())
+                                      range_valid=(start_range, end_range),
+                                      range_trans=(None, self._get_time()))
         if len(history) == 0:
             print(
                 f"cannot find any test of \"{loinc_full_name}\" ({args.loinc_code}) for {args.first_name} {args.last_name} at {self._get_time()}")

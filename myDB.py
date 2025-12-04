@@ -63,14 +63,13 @@ class MyDB:
         self.lastAdded = True
         return self.df.iloc[-1]
 
-    def get_history(self, first_name: str, last_name: str, loinc_code: str, range_: tuple[Optional[datetime.datetime], Optional[datetime.datetime]] = (None, None), for_time: Optional[datetime.datetime] = None):
+    def get_history(self, first_name: str, last_name: str, loinc_code: str, range_valid: tuple[datetime.datetime, datetime.datetime], range_trans: tuple[Optional[datetime.datetime], Optional[datetime.datetime]] = (None, None)):
         """
-        get history of a patient, order by `Valid start time`
-        :param first_name: patient's first name
-        :param last_name: patient's last name
-        :param loinc_code: loinc code
-        :param range_:
-        :param for_time:
+        :param first_name:
+        :param last_name:
+        :param loinc_code:
+        :param range_valid:
+        :param range_trans:
         :return:
         """
 
@@ -78,9 +77,10 @@ class MyDB:
             (self.df["First name"] == first_name) &
             (self.df["Last name"] == last_name) &
             (self.df["LOINC-NUM"] == loinc_code) &
-            (range_[0] is None or self.df["Valid start time"] >= range_[0]) &
-            (range_[1] is None or self.df["Valid start time"] <= range_[1]) &
-            (for_time is None or self.df["Transaction time"] <= for_time)
+            (self.df["Valid start time"].dt.floor('T') >= range_valid[0]) &
+            (self.df["Valid start time"].dt.floor('T') <= range_valid[1]) &
+            (range_trans[0] is None or self.df["Transaction time"].dt.floor('T') >= range_trans[0]) &
+            (range_trans[1] is None or self.df["Transaction time"].dt.floor('T') <= range_trans[1])
         ]
 
         good_groups = df.groupby("Valid start time")["Value"].apply(lambda s: s.notna().all())
