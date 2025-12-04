@@ -58,7 +58,7 @@ class MyDB:
         self.lastAdded = False
         return True
 
-    def add_row(self, first_name: str, last_name: str, loinc_code: str, valid_start_time: datetime.datetime, transaction_time: datetime.datetime, value: Optional[int], unit: str):
+    def add_row(self, first_name: str, last_name: str, loinc_code: str, valid_start_time: datetime.datetime, transaction_time: datetime.datetime, value: Optional[str], unit: str):
         self.df.loc[len(self.df)] = (first_name, last_name, loinc_code, value, unit, valid_start_time, transaction_time)
         self.lastAdded = True
         return self.df.iloc[-1]

@@ -171,7 +171,6 @@ def _get_result_arg_parser(args):
         print()
         return None
 
-
 def _delete_arg_parser(args):
     args = shlex.split(args)
     parser = argparse.ArgumentParser(prog="delete",
@@ -214,7 +213,6 @@ def _delete_arg_parser(args):
     except:
         print()
         return None
-
 
 def _update_arg_parser(args):
     args = shlex.split(args)
