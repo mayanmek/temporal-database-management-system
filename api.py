@@ -1,8 +1,12 @@
 import datetime
 from typing import Optional
 
+from pandas import Series
+from pandas.core.interchange.dataframe_protocol import DataFrame
+
 from myDB import MyDB
 from pathlib import Path
+
 
 class API:
     def __init__(self):
@@ -59,7 +63,7 @@ class API:
     ):
         data = self.get_res(first_name, last_name, loinc, valid_data, valid_time, trans_date, trans_time)
         if data is None:
-            return False
+            return None
 
         trans_datetime = datetime.datetime.now()
         if trans_date is not None:
@@ -67,7 +71,11 @@ class API:
                 trans_date,
                 trans_time if trans_time is not None else datetime.time.max
             )
-        return self.db.add_row(first_name, last_name, loinc, data["Valid start time"], trans_datetime, value, data["Unit"])
+        new_row = self.db.add_row(first_name, last_name, loinc, data["Valid start time"], trans_datetime, value, data["Unit"])
+        return {
+            "old": data,
+            "new": new_row
+        }
 
     def delete(
             self, first_name: str, last_name: str, loinc: str,
@@ -77,3 +85,16 @@ class API:
         return self.update(first_name, last_name, loinc,
            valid_data, valid_time,
            trans_date, trans_time)
+
+    def get_all_first_names(self):
+        return sorted(set(self.db.df["First name"]))
+
+    def get_all_last_names(self):
+        return sorted(set(self.db.df["Last name"]))
+
+    def get_all_loinc(self):
+        return sorted(set(self.db.df["LOINC-NUM"]))
+
+    def loinc2name(self, loinc: str) -> str:
+        return self.db.get_name_by_loinc(loinc)
+

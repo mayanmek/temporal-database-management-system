@@ -77,10 +77,10 @@ class MyDB:
             (self.df["First name"] == first_name) &
             (self.df["Last name"] == last_name) &
             (self.df["LOINC-NUM"] == loinc_code) &
-            (self.df["Valid start time"].dt.floor('T') >= range_valid[0]) &
-            (self.df["Valid start time"].dt.floor('T') <= range_valid[1]) &
-            (range_trans[0] is None or self.df["Transaction time"].dt.floor('T') >= range_trans[0]) &
-            (range_trans[1] is None or self.df["Transaction time"].dt.floor('T') <= range_trans[1])
+            (self.df["Valid start time"].dt.floor('min') >= range_valid[0]) &
+            (self.df["Valid start time"].dt.floor('min') <= range_valid[1]) &
+            (range_trans[0] is None or self.df["Transaction time"].dt.floor('min') >= range_trans[0]) &
+            (range_trans[1] is None or self.df["Transaction time"].dt.floor('min') <= range_trans[1])
         ]
 
         good_groups = df.groupby("Valid start time")["Value"].apply(lambda s: s.notna().all())
@@ -89,7 +89,8 @@ class MyDB:
             df.groupby("Valid start time")["Transaction time"].idxmax()
         ]
 
-        return df[["Value", "Unit", "Valid start time", "Transaction time"]]
+        return df
+        # return df[["Value", "Unit", "Valid start time", "Transaction time"]]
 
     def get_name_by_loinc(self, loinc: str) -> Optional[str]:
         df = self.loinc_df[self.loinc_df['LOINC_NUM'] == loinc]['LONG_COMMON_NAME']
